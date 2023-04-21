@@ -8,6 +8,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 
+import java.util.Date;
 import java.util.List;
 
 @SpringBootTest
@@ -47,5 +48,22 @@ class ForumSystemApplicationTests {
 //            System.out.println(discussPost);
 //        }
     }
+
+    @Test
+    void UserName(){
+        User user = userMapper.selectByEmail("1249@123.com");
+        System.out.println(user);
+//        for (DiscussPost discussPost : discussPosts) {
+//            System.out.println(discussPost);
+//        }
+    }
+
+
+    @Test
+    void InsertUser(){
+        User user = new User(155,"ttt2","123456","12345","test@163.com",0,1,"acacac","http://images.nowcoder.com/head/138t.png",new Date());
+        userMapper.insertUser(user);
+    }
+
 
 }
