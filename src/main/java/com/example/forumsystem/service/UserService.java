@@ -44,7 +44,7 @@ public class UserService implements ForumConstant {
     }
 
     public Map<String, Object> register(User user) {
-        System.out.println(user);
+//        System.out.println(user);
 //        返回结果处理
         Map<String, Object> map = new HashMap<>();
 
@@ -64,7 +64,7 @@ public class UserService implements ForumConstant {
             map.put("emailMsg", "邮箱不能为空!");
             return map;
         }
-        System.out.println(user);
+//        System.out.println(user);
 
         // 验证账号
         User u = userMapper.selectByName(user.getUsername());
@@ -72,7 +72,7 @@ public class UserService implements ForumConstant {
             map.put("usernameMsg", "该账号已存在!");
             return map;
         }
-        System.out.println(user);
+//        System.out.println(user);
 
         // 验证邮箱
         u = userMapper.selectByEmail(user.getEmail());
@@ -94,15 +94,16 @@ public class UserService implements ForumConstant {
         user.setHeaderUrl(String.format("http://images.nowcoder.com/head/%dt.png", new Random().nextInt(1000)));
 
         user.setCreateTime(new Date());
-        System.out.println(user);
+//        System.out.println(user);
         userMapper.insertUser(user);
 
         // 激活邮件
         Context context = new Context();
         context.setVariable("email", user.getEmail());
         // http://localhost:8080/activation/101/code
-        String url = domain + contextPath + "/activation/" + user.getId() + "/" + user.getActivationCode();
+        String url = domain + contextPath + "activation/" + user.getId() + "/" + user.getActivationCode();
         context.setVariable("url", url);
+//        System.out.println(url);
         String content = templateEngine.process("/mail/activation", context);
         mailClient.sendMail(user.getEmail(), "激活账号", content);
 
@@ -120,6 +121,7 @@ public class UserService implements ForumConstant {
         if(user.getStatus() != 0){
             return ACTIVATION_REAPEAT;
         } else if(user.getActivationCode().equals(code)){
+            userMapper.updateStatus(userID,1);
             return ACTIVATION_SUCCESS;
         }else{
             return ACTIVATION_FAILURE;
