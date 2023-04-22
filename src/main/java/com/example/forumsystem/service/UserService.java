@@ -1,6 +1,8 @@
 package com.example.forumsystem.service;
 
+import com.example.forumsystem.dao.LoginTicketMapper;
 import com.example.forumsystem.dao.UserMapper;
+import com.example.forumsystem.pojo.LoginTicket;
 import com.example.forumsystem.pojo.User;
 import com.example.forumsystem.utils.ForumConstant;
 import com.example.forumsystem.utils.ForumUtil;
@@ -8,6 +10,7 @@ import com.example.forumsystem.utils.MailClient;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.annotation.Configuration;
 import org.springframework.stereotype.Service;
 import org.thymeleaf.TemplateEngine;
 import org.thymeleaf.context.Context;
@@ -22,6 +25,7 @@ import java.util.Random;
  * @version 1.0
  * @data 2023/4/20 15:04
  */
+@Configuration
 @Service
 public class UserService implements ForumConstant {
     @Autowired
@@ -29,6 +33,9 @@ public class UserService implements ForumConstant {
 
     @Autowired
     private MailClient mailClient;
+
+    @Autowired
+    LoginTicketMapper loginTicketMapper;
 
     @Autowired(required = false)
     private TemplateEngine templateEngine;
@@ -126,5 +133,66 @@ public class UserService implements ForumConstant {
         }else{
             return ACTIVATION_FAILURE;
         }
+    }
+
+    public Map<String,Object> login(String username,String password,long expiredSeconds){
+        Map<String,Object> map = new HashMap<>();
+
+        // 空值处理
+        if (StringUtils.isBlank(username)) {
+            map.put("usernameMsg", "账号不能为空!");
+            return map;
+        }
+        if (StringUtils.isBlank(password)) {
+            map.put("passwordMsg", "密码不能为空!");
+            return map;
+        }
+
+        // 验证账号
+        User user = userMapper.selectByName(username);
+        if (user == null) {
+            map.put("usernameMsg", "该账号不存在!");
+            return map;
+        }
+
+        // 验证状态
+        if (user.getStatus() == 0) {
+            map.put("usernameMsg", "该账号未激活!");
+            return map;
+        }
+
+        // 验证密码
+        password = ForumUtil.md5(password + user.getSalt());
+        if (!user.getPassword().equals(password)) {
+            map.put("passwordMsg", "密码不正确!");
+            return map;
+        }
+
+        // 生成登录凭证
+        LoginTicket loginTicket = new LoginTicket();
+        loginTicket.setUserId(user.getId());
+        loginTicket.setTicket(ForumUtil.generateUUID());
+        // 状态0代表登陆成功
+        loginTicket.setStatus(0);
+        // 过期时间设置为当前时间 + expiredSeconds
+        loginTicket.setExpired(new Date(System.currentTimeMillis() + expiredSeconds * 1000));
+        loginTicketMapper.insertLoginTicket(loginTicket);
+
+        map.put("ticket", loginTicket.getTicket());
+
+        return map;
+
+    }
+
+    public void logout(String ticket){
+        loginTicketMapper.updateStatus(ticket,1);
+    }
+
+    public LoginTicket findLoginTicket(String ticket){
+        return loginTicketMapper.selectByTicket(ticket);
+    }
+
+    public int updateHeader(int userId,String headerUrl){
+        return userMapper.updateHeader(userId,headerUrl);
     }
 }
