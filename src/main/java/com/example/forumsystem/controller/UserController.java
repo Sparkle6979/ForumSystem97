@@ -1,5 +1,6 @@
 package com.example.forumsystem.controller;
 
+import com.example.forumsystem.annotation.LoginRequired;
 import com.example.forumsystem.pojo.User;
 import com.example.forumsystem.service.UserService;
 import com.example.forumsystem.utils.ForumUtil;
@@ -46,12 +47,13 @@ public class UserController {
     @Autowired
     private HostHolder hostHolder;
 
-
+    @LoginRequired
     @GetMapping("/setting")
     public String getSettingPage(){
         return "/site/setting";
     }
 
+    @LoginRequired
     @PostMapping("/upload")
     public String uploadHeader(MultipartFile headerImage, Model model){
         if(headerImage == null){
@@ -111,5 +113,22 @@ public class UserController {
             logger.error("文件上传失败" + e.getMessage());
             e.printStackTrace();
         }
+    }
+
+    @PostMapping("/updatepwd")
+    public String updatePassword(String oldPassword,String newPassword,Model model){
+
+        User user = hostHolder.getUser();
+        oldPassword = ForumUtil.md5(oldPassword + user.getSalt());
+//        System.out.println("++++++++++" + oldPassword);
+        if (!user.getPassword().equals(oldPassword)){
+            model.addAttribute("oldPasswordMsg","旧密码输入错误，请重新输入");
+            return "/site/setting";
+        }
+
+        newPassword = ForumUtil.md5(newPassword + user.getSalt());
+        userService.updatePassword(user.getId(),newPassword);
+        return "redirect:/logout";
+
     }
 }

@@ -1,5 +1,6 @@
 package com.example.forumsystem.config;
 
+import com.example.forumsystem.controller.interceptor.LoginRequiredInterceptor;
 import com.example.forumsystem.controller.interceptor.LoginTicketInterceptor;
 import com.example.forumsystem.dao.LoginTicketMapper;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -18,9 +19,15 @@ public class WebMvcConfig implements WebMvcConfigurer {
     @Autowired
     private LoginTicketInterceptor loginTicketInterceptor;
 
+    @Autowired
+    private LoginRequiredInterceptor loginRequiredInterceptor;
+
     @Override
     public void addInterceptors(InterceptorRegistry registry) {
         registry.addInterceptor(loginTicketInterceptor)
+                .excludePathPatterns("/**/*.css","/**/*.js","/**/*.png","/**/*.jpg","/**/*.jpeg");
+
+        registry.addInterceptor(loginRequiredInterceptor)
                 .excludePathPatterns("/**/*.css","/**/*.js","/**/*.png","/**/*.jpg","/**/*.jpeg");
     }
 }
