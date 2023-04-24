@@ -4,7 +4,9 @@ import com.example.forumsystem.pojo.DiscussPost;
 import com.example.forumsystem.pojo.Page;
 import com.example.forumsystem.pojo.User;
 import com.example.forumsystem.service.DiscussPostService;
+import com.example.forumsystem.service.LikeService;
 import com.example.forumsystem.service.UserService;
+import com.example.forumsystem.utils.ForumConstant;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
@@ -21,11 +23,13 @@ import java.util.Map;
  * @data 2023/4/20 15:06
  */
 @Controller
-public class HomeController {
+public class HomeController implements ForumConstant {
     @Autowired
     private DiscussPostService discussPostService;
     @Autowired
     private UserService userService;
+    @Autowired
+    private LikeService likeService;
 
     @GetMapping("/index")
     public String getIndexPage(Page page, Model model){
@@ -45,6 +49,10 @@ public class HomeController {
                 map.put("post",post);
                 User user=userService.findUserById(post.getUserId());
                 map.put("user",user);
+
+                long likeCount = likeService.findEntityLikeCount(ENTITY_TYPE_POST,post.getId());
+                map.put("likeCount",likeCount);
+                // 显示点赞数
                 discussPosts.add(map);
             }
         }

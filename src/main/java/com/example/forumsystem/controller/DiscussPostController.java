@@ -6,6 +6,7 @@ import com.example.forumsystem.pojo.Page;
 import com.example.forumsystem.pojo.User;
 import com.example.forumsystem.service.CommentService;
 import com.example.forumsystem.service.DiscussPostService;
+import com.example.forumsystem.service.LikeService;
 import com.example.forumsystem.service.UserService;
 import com.example.forumsystem.utils.ForumConstant;
 import com.example.forumsystem.utils.ForumUtil;
@@ -33,6 +34,8 @@ public class DiscussPostController implements ForumConstant {
     UserService userService;
     @Autowired
     CommentService commentService;
+    @Autowired
+    private LikeService likeService;
 
     @PostMapping("/add")
     @ResponseBody
@@ -62,6 +65,14 @@ public class DiscussPostController implements ForumConstant {
         User user = userService.findUserById(discussPost.getUserId());
         model.addAttribute("user",user);
 
+        // 点赞数量
+        long likeCount = likeService.findEntityLikeCount(ENTITY_TYPE_POST, discussPostId);
+        model.addAttribute("likeCount", likeCount);
+        // 点赞状态
+        int likeStatus = hostHolder.getUser() == null ? 0 :
+                likeService.findEntityLikeStatus(hostHolder.getUser().getId(), ENTITY_TYPE_POST, discussPostId);
+        model.addAttribute("likeStatus", likeStatus);
+
         // 评论信息
         page.setLimit(5);
         page.setRows(discussPost.getCommentCount());
@@ -83,6 +94,14 @@ public class DiscussPostController implements ForumConstant {
                 int replyCount = commentService.findCommentCount(ENTITY_TYPE_COMMENT, comment.getId());
                 commetVo.put("replyCount",replyCount);
 
+                // 点赞数量
+                likeCount = likeService.findEntityLikeCount(ENTITY_TYPE_COMMENT, comment.getId());
+                commetVo.put("likeCount", likeCount);
+                // 点赞状态
+                likeStatus = hostHolder.getUser() == null ? 0 :
+                        likeService.findEntityLikeStatus(hostHolder.getUser().getId(), ENTITY_TYPE_COMMENT, comment.getId());
+                commetVo.put("likeStatus", likeStatus);
+
                 // 回复列表
                 List<Comment> replyList = commentService.findCommentsByEntity(ENTITY_TYPE_COMMENT, comment.getId(), 0, Integer.MAX_VALUE);
                 
@@ -98,11 +117,17 @@ public class DiscussPostController implements ForumConstant {
                     User target = reply.getTargetId() == 0 ? null:userService.findUserById(reply.getTargetId());
                     replyVo.put("target",target);
 
+                    // 点赞数量
+                    likeCount = likeService.findEntityLikeCount(ENTITY_TYPE_COMMENT, reply.getId());
+                    replyVo.put("likeCount", likeCount);
+                    // 点赞状态
+                    likeStatus = hostHolder.getUser() == null ? 0 :
+                            likeService.findEntityLikeStatus(hostHolder.getUser().getId(), ENTITY_TYPE_COMMENT, reply.getId());
+                    replyVo.put("likeStatus", likeStatus);
+
                     replyVoList.add(replyVo);
                 }
                 commetVo.put("replys",replyVoList);
-
-
                 commentVoList.add(commetVo);
             }
         }

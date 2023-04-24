@@ -1,0 +1,35 @@
+version: '3.9'
+
+services:
+  mysql:
+    image: mysql:latest
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: your_root_password_here
+      MYSQL_DATABASE: your_database_name_here
+      MYSQL_USER: your_mysql_username_here
+      MYSQL_PASSWORD: your_mysql_password_here
+    ports:
+      - "3306:3306"
+    volumes:
+      - ./mysql_data:/var/lib/mysql
+
+  redis:
+    image: redis:latest
+    restart: always
+    ports:
+      - "6379:6379"
+
+  app:
+    build: .
+    ports:
+      - "8080:8080"
+    depends_on:
+      - mysql
+      - redis
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/your_database_name_here?useUnicode=true&characterEncoding=utf8&useSSL=false&allowPublicKeyRetrieval=true
+      SPRING_DATASOURCE_USERNAME: your_mysql_username_here
+      SPRING_DATASOURCE_PASSWORD: your_mysql_password_here
+      SPRING_REDIS_HOST: redis
+      SPRING_REDIS_PORT: 6379
