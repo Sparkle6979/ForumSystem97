@@ -16,10 +16,11 @@
     <select id="selectById" resultType="User">
         select <include refid="selectFields"></include>
         from user
-        where status != 2
-        <if test="id!=1">
-            and id = #{id}
-        </if>
+        where id = #{id}
+<!--        where status != 2-->
+<!--        <if test="id!=1">-->
+<!--            and id = #{id}-->
+<!--        </if>-->
 
     </select>
 

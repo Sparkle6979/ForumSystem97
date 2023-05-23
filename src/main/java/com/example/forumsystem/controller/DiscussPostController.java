@@ -1,9 +1,7 @@
 package com.example.forumsystem.controller;
 
-import com.example.forumsystem.pojo.Comment;
-import com.example.forumsystem.pojo.DiscussPost;
-import com.example.forumsystem.pojo.Page;
-import com.example.forumsystem.pojo.User;
+import com.example.forumsystem.event.EventProducer;
+import com.example.forumsystem.pojo.*;
 import com.example.forumsystem.service.CommentService;
 import com.example.forumsystem.service.DiscussPostService;
 import com.example.forumsystem.service.LikeService;
@@ -36,6 +34,8 @@ public class DiscussPostController implements ForumConstant {
     CommentService commentService;
     @Autowired
     private LikeService likeService;
+    @Autowired
+    private EventProducer eventProducer;
 
     @PostMapping("/add")
     @ResponseBody
@@ -51,6 +51,14 @@ public class DiscussPostController implements ForumConstant {
         post.setContent(content);
         post.setCreateTime(new Date());
         discussPostService.addDiscussPost(post);
+
+        // 触发发帖事件
+        Event event = new Event()
+                .setTopic(TOPIC_PUBLISH)
+                .setUserId(user.getId())
+                .setEntityType(ENTITY_TYPE_POST)
+                .setEntityId(post.getId());
+        eventProducer.fireEvent(event);
 
         return ForumUtil.getJSONString(0,"发布成功！");
     }

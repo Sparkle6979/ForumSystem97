@@ -7,10 +7,12 @@ import com.example.forumsystem.pojo.User;
 import com.example.forumsystem.utils.ForumConstant;
 import com.example.forumsystem.utils.ForumUtil;
 import com.example.forumsystem.utils.MailClient;
+import com.example.forumsystem.utils.RedisKeyUtil;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
 import org.thymeleaf.TemplateEngine;
 import org.thymeleaf.context.Context;
@@ -19,6 +21,7 @@ import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Random;
+import java.util.concurrent.TimeUnit;
 
 /**
  * @author sparkle6979l
@@ -40,6 +43,9 @@ public class UserService implements ForumConstant {
     @Autowired(required = false)
     private TemplateEngine templateEngine;
 
+    @Autowired
+    private RedisTemplate redisTemplate;
+
     @Value("${forum.path.domain}")
     private String domain;
 
@@ -47,7 +53,12 @@ public class UserService implements ForumConstant {
     private String contextPath;
 
     public User findUserById(int id){
-        return userMapper.selectById(id);
+        User user = getCache(id);
+        if(user == null){
+            user = initCache(id);
+        }
+        return user;
+//        return userMapper.selectById(id);
     }
 
     public Map<String, Object> register(User user) {
@@ -111,6 +122,7 @@ public class UserService implements ForumConstant {
         String url = domain + contextPath + "activation/" + user.getId() + "/" + user.getActivationCode();
         context.setVariable("url", url);
 //        System.out.println(url);
+        // 设置 邮件html的样式 + 渲染，
         String content = templateEngine.process("/mail/activation", context);
         mailClient.sendMail(user.getEmail(), "激活账号", content);
 
@@ -129,6 +141,7 @@ public class UserService implements ForumConstant {
             return ACTIVATION_REAPEAT;
         } else if(user.getActivationCode().equals(code)){
             userMapper.updateStatus(userID,1);
+            clearCache(userID);
             return ACTIVATION_SUCCESS;
         }else{
             return ACTIVATION_FAILURE;
@@ -176,7 +189,9 @@ public class UserService implements ForumConstant {
         loginTicket.setStatus(0);
         // 过期时间设置为当前时间 + expiredSeconds
         loginTicket.setExpired(new Date(System.currentTimeMillis() + expiredSeconds * 1000));
-        loginTicketMapper.insertLoginTicket(loginTicket);
+//        loginTicketMapper.insertLoginTicket(loginTicket);
+        String redisKey = RedisKeyUtil.getTicketKey(loginTicket.getTicket());
+        redisTemplate.opsForValue().set(redisKey,loginTicket);
 
         map.put("ticket", loginTicket.getTicket());
 
@@ -185,18 +200,52 @@ public class UserService implements ForumConstant {
     }
 
     public void logout(String ticket){
-        loginTicketMapper.updateStatus(ticket,1);
+//        loginTicketMapper.updateStatus(ticket,1);
+        String redisKey = RedisKeyUtil.getTicketKey(ticket);
+        LoginTicket loginTicket = (LoginTicket) redisTemplate.opsForValue().get(redisKey);
+        loginTicket.setStatus(1);
+        redisTemplate.opsForValue().set(redisKey,loginTicket);
+
     }
 
     public LoginTicket findLoginTicket(String ticket){
-        return loginTicketMapper.selectByTicket(ticket);
+//        return loginTicketMapper.selectByTicket(ticket);
+        String redisKey = RedisKeyUtil.getTicketKey(ticket);
+        return (LoginTicket) redisTemplate.opsForValue().get(redisKey);
     }
 
     public int updateHeader(int userId,String headerUrl){
-        return userMapper.updateHeader(userId,headerUrl);
+        int rows =  userMapper.updateHeader(userId,headerUrl);
+        clearCache(userId);
+        return rows;
     }
 
     public int updatePassword(int userId,String password){
         return userMapper.updatePassword(userId,password);
     }
+
+    public User findUserByName(String username){ return userMapper.selectByName(username); }
+
+    // 1、优先从缓存中取值
+    private User getCache(int userId){
+        String redisKey = RedisKeyUtil.getUserKey(userId);
+        return (User)redisTemplate.opsForValue().get(redisKey);
+    }
+
+    // 2、取不到时初始化缓存数据
+    private User initCache(int userId){
+        User user = userMapper.selectById(userId);
+        String redisKey = RedisKeyUtil.getUserKey(userId);
+        // 缓存一个小时
+        redisTemplate.opsForValue().set(redisKey,user,3600, TimeUnit.SECONDS);
+        return user;
+    }
+
+    // 3、数据变更时清除缓存数据
+    private void clearCache(int userId){
+        String redisKey = RedisKeyUtil.getUserKey(userId);
+        redisTemplate.delete(redisKey);
+    }
+
+
 }
